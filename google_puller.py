@@ -8,10 +8,10 @@ Created on Thu Sep 10 10:12:09 2020
 import requests
 import logging
 import sys
+import time
+import random
 from datetime import datetime
-from urllib.parse import unquote
 from selenium.webdriver import Firefox
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
 
 logging_levels = {
         "debug": logging.DEBUG,
@@ -34,17 +34,23 @@ class Puller():
     
     def kill(self):
         self.driver.quit()
+        del self
         
     def search(self, search_term):
         self.driver.get(self.base_url + search_term)
     
     def pull(self, index):
         result = self.driver.find_elements_by_class_name("isv-r")[index]
-        result = result.find_element_by_class_name("wXeWr")
-        # this only works if I "inspect element" on the proper image beforehand
-        # looking into using action chains / action builder to use context menu
-        url = result.get_attribute("href").replace("/imgres?imgurl=", "")
-        url = unquote(url.replace("https://www.google.com", ""))
+        result.find_element_by_tag_name("img").click()
+        self.driver.find_element_by_class_name("h04bR").click()
+        time.sleep(random.triangular(0.3, 0.6, 0.4))
+        url = self.driver.find_element_by_class_name("c1AlVc").get_attribute("href")
+        self.driver.get(url)
+        print("loaded")
+        url = ""
+        while not url.startswith("http"):
+            time.sleep(random.triangular(0.5, 1, 0.7))
+            url = self.driver.find_element_by_id("imi").get_attribute("src")
         self.image = requests.get(url).content
         
     def get_index_by_size(self, min_width=None, min_height=None,
@@ -79,3 +85,11 @@ class Puller():
     def save_pulled(self, save_path):
         with open(save_path, "wb") as file:
             file.write(self.image)
+    
+    def search_save(self, search_term, save_path, min_width=None,
+                    min_height=None, max_width=None, max_height=None):
+        self.search(search_term)
+        index = self.get_index_by_size(min_width, min_height, max_width, max_height)
+        self.pull(index)
+        self.save_pulled(save_path)
+
